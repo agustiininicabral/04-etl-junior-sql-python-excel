@@ -106,7 +106,9 @@ def clean_orders(
     valid_mask = [not row_reasons for row_reasons in reasons]
     rejected = source.loc[[not valid for valid in valid_mask]].copy()
     rejected["source_row"] = [index + 2 for index, valid in enumerate(valid_mask) if not valid]
-    rejected["reject_reason"] = ["; ".join(row) for row, valid in zip(reasons, valid_mask) if not valid]
+    rejected["reject_reason"] = [
+        "; ".join(row) for row, valid in zip(reasons, valid_mask) if not valid
+    ]
 
     clean = source.loc[valid_mask].copy()
     clean["order_date"] = [
@@ -137,7 +139,9 @@ def clean_orders(
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     clean.to_csv(output, index=False)
-    rejects_output = Path(rejected_path) if rejected_path else output.with_name("orders_rejected.csv")
+    rejects_output = (
+        Path(rejected_path) if rejected_path else output.with_name("orders_rejected.csv")
+    )
     rejects_output.parent.mkdir(parents=True, exist_ok=True)
     rejected.to_csv(rejects_output, index=False)
 
