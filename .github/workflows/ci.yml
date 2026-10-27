@@ -1,0 +1,38 @@
+name: ETL Orders Quality
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Check formatting
+        run: ruff format --check etl tests
+      - name: Check lint
+        run: ruff check etl tests
+      - name: Run unit tests
+        run: python -m pytest -q
+      - name: Run ETL on included dirty dataset
+        run: python etl/etl_clean_orders.py --in data/orders_dirty.csv --out reports/orders_clean.csv --rejected reports/orders_rejected.csv
+      - name: Upload clean and rejected rows
+        uses: actions/upload-artifact@v4
+        with:
+          name: etl-cleaning-results
+          path: reports/
+          if-no-files-found: error
+          retention-days: 7
