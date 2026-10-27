@@ -22,7 +22,7 @@ REQUIRED_COLUMNS = {
 }
 
 
-def parse_date(value: Any) -> pd.Timestamp | pd.NaT:
+def parse_date(value: Any):
     text = str(value).strip()
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
         return pd.to_datetime(text, format="%Y-%m-%d", errors="coerce")
@@ -88,15 +88,20 @@ def clean_orders(
     for index in range(len(source)):
         if pd.isna(parsed_dates.iloc[index]):
             reasons[index].append("invalid order_date")
-        if parsed_prices.iloc[index] is None or parsed_prices.iloc[index] <= 0:
+        if pd.isna(parsed_prices.iloc[index]) or parsed_prices.iloc[index] <= 0:
             reasons[index].append("unit_price must be a positive number")
-        if parsed_discounts.iloc[index] is None:
+        if pd.isna(parsed_discounts.iloc[index]):
             reasons[index].append("discount_rate must be between 0 and 0.8")
         for column in ("order_id", "customer_id", "product_id"):
-            if parsed_ids[column].iloc[index] is None:
+            if pd.isna(parsed_ids[column].iloc[index]):
                 reasons[index].append(f"{column} must be a positive integer")
-        if parsed_ids["quantity"].iloc[index] is None:
+        if pd.isna(parsed_ids["quantity"].iloc[index]):
             reasons[index].append("quantity must be a positive integer")
+
+    duplicate_orders = source["order_id"].duplicated(keep=False)
+    for index, is_duplicate in enumerate(duplicate_orders):
+        if is_duplicate:
+            reasons[index].append("duplicate order_id")
 
     valid_mask = [not row_reasons for row_reasons in reasons]
     rejected = source.loc[[not valid for valid in valid_mask]].copy()
@@ -110,7 +115,7 @@ def clean_orders(
         if valid
     ]
     for column, values in parsed_ids.items():
-        clean[column] = [values.iloc[index] for index, valid in enumerate(valid_mask) if valid]
+        clean[column] = [int(values.iloc[index]) for index, valid in enumerate(valid_mask) if valid]
     clean["unit_price"] = [
         parsed_prices.iloc[index] for index, valid in enumerate(valid_mask) if valid
     ]
